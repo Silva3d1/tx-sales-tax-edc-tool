@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Texas Sales Tax EDC Report Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#eef2f7;color:#1a2634}
+
+.header{background:linear-gradient(135deg,#002060,#0057b8);color:#fff;padding:18px 32px;display:flex;align-items:center;gap:14px}
+.header h1{font-size:1.4rem;font-weight:700}
+.header p{font-size:.82rem;opacity:.75;margin-top:3px}
+
+.wrap{max-width:1300px;margin:0 auto;padding:22px}
+
+.card{background:#fff;border-radius:10px;padding:20px 24px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.ct{font-size:.71rem;font-weight:700;color:#002060;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid #e2e8f0;padding-bottom:8px;margin-bottom:15px}
+
+/* form */
+.frow{display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px}
+@media(max-width:640px){.frow{grid-template-columns:1fr}}
+.fg{display:flex;flex-direction:column}
+.fg label{font-size:.7rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px}
+.fg input,.fg select{padding:9px 12px;border:1.5px solid #cbd5e0;border-radius:6px;font-size:.93rem;background:#fff}
+.fg input:focus,.fg select:focus{outline:none;border-color:#0057b8;box-shadow:0 0 0 3px rgba(0,87,184,.1)}
+
+/* edc */
+.edc-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.edc-hl{font-size:.7rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.06em}
+.btn-ae{background:#ebf4ff;color:#0057b8;border:1.5px dashed #90cdf4;padding:5px 13px;border-radius:6px;cursor:pointer;font-size:.8rem;font-weight:600}
+.btn-ae:hover{background:#bee3f8}
+.er{display:flex;gap:8px;align-items:center;padding:9px 12px;background:#f7fafc;border-radius:7px;border:1px solid #e2e8f0;margin-bottom:7px}
+.er input,.er select{flex:1;padding:6px 9px;border:1.5px solid #cbd5e0;border-radius:5px;font-size:.86rem;background:#fff}
+.er input:focus,.er select:focus{outline:none;border-color:#0057b8}
+.el{font-size:.73rem;font-weight:600;color:#718096;white-space:nowrap}
+.brm{background:#fed7d7;color:#9b2c2c;border:none;border-radius:5px;padding:5px 9px;cursor:pointer;font-size:.76rem;font-weight:600}
+.brm:hover{background:#feb2b2}
+
+/* period */
+.pw{margin-top:16px}
+.pl{font-size:.7rem;font-weight:700;color:#4a5568;text-transform:uppercase;letter-spacing:.06em;display:block;margin-bottom:7px}
+.pbs{display:flex;gap:7px;flex-wrap:wrap}
+.pb{padding:7px 20px;border:2px solid #cbd5e0;border-radius:20px;background:#fff;color:#4a5568;cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s}
+.pb.active{background:#002060;border-color:#002060;color:#fff}
+.pb:hover:not(.active){border-color:#0057b8;color:#0057b8}
+
+.bg{background:linear-gradient(135deg,#002060,#0057b8);color:#fff;border:none;padding:12px 32px;border-radius:7px;font-size:.96rem;font-weight:700;cursor:pointer;margin-top:16px;width:100%}
+.bg:hover{opacity:.9}
+.bg:disabled{opacity:.55;cursor:not-allowed}
+
+/* loading/error */
+.lc{text-align:center;padding:40px 20px;display:none}
+.sp{width:38px;height:38px;border:4px solid #e2e8f0;border-top-color:#0057b8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.eb{background:#fff5f5;border:1.5px solid #feb2b2;border-radius:8px;padding:13px 17px;color:#9b2c2c;display:none;margin-bottom:18px;font-size:.88rem;line-height:1.5}
+
+/* stat cards */
+.sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(168px,1fr));gap:12px;margin-bottom:16px}
+.sc{background:#fff;border-radius:10px;padding:15px 17px;box-shadow:0 2px 8px rgba(0,0,0,.07);border-top:4px solid #0057b8}
+.sc.g{border-top-color:#38a169}.sc.o{border-top-color:#dd6b20}.sc.p{border-top-color:#6b46c1}.sc.r{border-top-color:#c53030}.sc.y{border-top-color:#d69e2e}
+.sl{font-size:.69rem;font-weight:700;color:#718096;text-transform:uppercase;letter-spacing:.06em}
+.sv{font-size:1.32rem;font-weight:800;color:#1a2634;margin-top:4px;line-height:1}
+.ss{font-size:.73rem;color:#a0aec0;margin-top:3px}
+
+/* charts */
+.c2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:750px){.c2{grid-template-columns:1fr}}
+.ch{position:relative;height:260px}
+.cht{font-size:.83rem;font-weight:600;color:#4a5568;margin-bottom:9px}
+
+/* edc result cards */
+.ecs{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:15px}
+.ec{background:#f7fafc;border-radius:8px;padding:14px;border:1.5px solid #e2e8f0}
+.ec h4{font-size:.83rem;font-weight:700;color:#002060;margin-bottom:4px}
+.eb2{display:inline-block;background:#ebf4ff;color:#0057b8;border-radius:4px;padding:2px 7px;font-size:.69rem;font-weight:700;margin-bottom:9px}
+.em{margin-bottom:5px}
+.eml{font-size:.68rem;color:#718096;font-weight:600;text-transform:uppercase}
+.emv{font-size:1rem;font-weight:800;color:#1a2634}
+
+/* table */
+.ts{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+thead th{background:#002060;color:#fff;padding:9px 11px;text-align:left;font-size:.71rem;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+thead th.tr{text-align:right}
+tbody td{padding:7px 11px;border-bottom:1px solid #eef2f7;white-space:nowrap}
+tbody tr:hover td{background:#f7fafc}
+.tr{text-align:right}
+.up{color:#276749;font-weight:700}.dn{color:#9b2c2c;font-weight:700}
+
+/* tabs */
+.tn{display:flex;gap:2px;border-bottom:2px solid #e2e8f0;margin-bottom:0}
+.tb{padding:8px 15px;border:none;background:none;cursor:pointer;font-size:.86rem;color:#718096;border-bottom:3px solid transparent;margin-bottom:-2px;font-weight:600}
+.tb.active{color:#002060;border-bottom-color:#002060}
+.tc{display:none;padding-top:13px}.tc.active{display:block}
+
+/* proj */
+.pn{background:#fffbeb;border:1.5px solid #f6e05e;border-radius:7px;padding:9px 13px;font-size:.77rem;color:#744210;margin-bottom:13px}
+
+/* report bar */
+.rb{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.rt{font-size:1.22rem;font-weight:800;color:#002060}
+.rs{font-size:.79rem;color:#718096;margin-top:3px}
+.bpr{background:#fff;border:1.5px solid #cbd5e0;padding:7px 13px;border-radius:6px;cursor:pointer;font-size:.8rem;color:#4a5568;font-weight:600}
+.bpr:hover{background:#f7fafc}
+
+.dn2{font-size:.73rem;color:#a0aec0;margin-top:9px;font-style:italic;line-height:1.5}
+.ib{background:#ebf8ff;border:1.5px solid #90cdf4;border-radius:8px;padding:11px 15px;color:#2c5282;font-size:.82rem;margin-bottom:14px;line-height:1.5}
+
+@media print{.cfg,.header{display:none!important}body{background:#fff}.card{box-shadow:none;border:1px solid #e2e8f0}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div style="font-size:1.9rem">🏛️</div>
+  <div>
+    <h1>Texas Sales Tax EDC Report Tool</h1>
+    <p>Texas Comptroller Open Data &nbsp;•&nbsp; Monthly Allocation History &amp; EDC Projections</p>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- CONFIG -->
+<div class="card cfg">
+  <div class="ct">Report Configuration</div>
+  <div class="frow">
+    <div class="fg">
+      <label>City Name</label>
+      <input id="cityIn" type="text" value="Brownsville" placeholder="e.g. Brownsville" autocomplete="off">
+    </div>
+    <div class="fg">
+      <label>City Total Local Tax Rate</label>
+      <select id="crSel" onchange="onRateChg()">
+        <option value="0.01">1.00% (1 cent)</option>
+        <option value="0.015">1.50% (1½ cents)</option>
+        <option value="0.02" selected>2.00% (2 cents — max)</option>
+        <option value="custom">Custom…</option>
+      </select>
+    </div>
+    <div class="fg" id="crGrp" style="display:none">
+      <label>Custom Rate (%)</label>
+      <input id="crVal" type="number" placeholder="e.g. 1.75" min="0.01" max="2" step="0.01">
+    </div>
+  </div>
+
+  <div style="margin-top:17px">
+    <div class="edc-hdr">
+      <span class="edc-hl">EDC Configurations</span>
+      <button class="btn-ae" onclick="addEDC()">+ Add EDC</button>
+    </div>
+    <div id="edcList"></div>
+  </div>
+
+  <div class="pw">
+    <span class="pl">Report Period (years of history to display)</span>
+    <div class="pbs">
+      <button class="pb" onclick="setPeriod(1,this)">1 Year</button>
+      <button class="pb" onclick="setPeriod(3,this)">3 Years</button>
+      <button class="pb active" onclick="setPeriod(5,this)">5 Years</button>
+      <button class="pb" onclick="setPeriod(10,this)">10 Years</button>
+    </div>
+  </div>
+
+  <button class="bg" id="genBtn" onclick="run()">📊 Generate Report</button>
+</div>
+
+<div class="eb" id="errBox"></div>
+
+<div class="card lc" id="loadCard">
+  <div class="sp"></div>
+  <div style="font-weight:600;color:#4a5568">Fetching allocation history from Texas Comptroller…</div>
+  <div style="font-size:.8rem;color:#a0aec0;margin-top:4px">Querying monthly records for <span id="lcCity"></span></div>
+</div>
+
+<!-- RESULTS -->
+<div id="results" style="display:none">
+
+  <div class="rb">
+    <div>
+      <div class="rt" id="rTitle"></div>
+      <div class="rs" id="rSub"></div>
+    </div>
+    <button class="bpr" onclick="window.print()">🖨️ Print / Save PDF</button>
+  </div>
+
+  <!-- Current period -->
+  <div class="card">
+    <div class="ct">Latest Period</div>
+    <div class="sg" id="latestStats"></div>
+  </div>
+
+  <!-- Current year monthly -->
+  <div class="card">
+    <div class="ct" id="curYrTitle">Current Calendar Year — Monthly Breakdown</div>
+    <div class="c2">
+      <div>
+        <div class="cht">Monthly Allocation</div>
+        <div class="ch"><canvas id="curYrBar"></canvas></div>
+      </div>
+      <div>
+        <div class="cht">EDC Monthly Allocations</div>
+        <div class="ch"><canvas id="curYrEDCBar"></canvas></div>
+      </div>
+    </div>
+    <div style="margin-top:16px">
+      <div class="ts"><table id="curYrTable"></table></div>
+    </div>
+  </div>
+
+  <!-- EDC cards -->
+  <div class="card" id="edcCard" style="display:none">
+    <div class="ct">EDC Allocation — Latest Period &amp; Projections</div>
+    <div class="ecs" id="edcCards"></div>
+    <div class="c2">
+      <div>
+        <div class="cht">Current Allocation Distribution</div>
+        <div class="ch" style="height:230px"><canvas id="donutChart"></canvas></div>
+      </div>
+      <div>
+        <div class="cht">Projected EDC Cumulative (1 / 3 / 5 / 10 yr)</div>
+        <div class="ch" style="height:230px"><canvas id="projBar"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historical annual -->
+  <div class="card">
+    <div class="ct">Historical Annual Summary</div>
+    <div class="c2">
+      <div>
+        <div class="cht">Annual Allocation — City Total</div>
+        <div class="ch"><canvas id="annBar"></canvas></div>
+      </div>
+      <div>
+        <div class="cht" id="edcAnnTitle">EDC Annual Allocations</div>
+        <div class="ch"><canvas id="edcAnnBar"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Projections -->
+  <div class="card" id="projCard" style="display:none">
+    <div class="ct">Forward Projections</div>
+    <div class="pn">⚠️ Projections are estimates based on the compound annual growth rate (CAGR) of available historical data. Actual revenues will vary.</div>
+    <div class="sg" id="projStats"></div>
+  </div>
+
+  <!-- Data tables -->
+  <div class="card">
+    <div class="ct">Full Data Tables</div>
+    <div class="tn">
+      <button class="tb active" onclick="sTab('annual',this)">Annual Summary</button>
+      <button class="tb" onclick="sTab('monthly',this)">Monthly Detail</button>
+    </div>
+    <div class="tc active" id="tc-annual"><div class="ts"><table id="annTable"></table></div></div>
+    <div class="tc" id="tc-monthly"><div class="ts"><table id="moTable"></table></div></div>
+    <p class="dn2">Source: Texas Comptroller Open Data Portal — Sales Tax Allocation, City (dataset vfba-b57j). Each record = one monthly allocation payment to the city. EDC amounts are proportional estimates: EDC allocation = City allocation × (EDC rate ÷ City total rate). For exact EDC entity figures visit <a href="https://mycpa.cpa.state.tx.us/allocation/AllocHist" target="_blank" style="color:#0057b8">mycpa.cpa.state.tx.us/allocation/AllocHist</a>.</p>
+  </div>
+
+</div><!-- /results -->
+</div><!-- /wrap -->
+
+<script>
+// ─────────────────────────────────────────────
+// GLOBALS
+// ─────────────────────────────────────────────
+let period  = 5;
+let charts  = {};
+let edcId   = 0;
+let cols    = null;   // detected API column names
+let allRows = [];     // parsed monthly records [{year,month,pay,prior,ytd,pct}]
+
+const COLORS  = ['#38a169','#dd6b20','#6b46c1','#2b6cb0','#c53030','#b7791f'];
+const MONTHS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt0    = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0}).format(n||0);
+const fmt2    = n => new Intl.NumberFormat('en-US',{style:'currency',currency:'USD',minimumFractionDigits:2}).format(n||0);
+const pct     = n => (n>=0?'+':'')+Number(n).toFixed(1)+'%';
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  addEDC('GBIC (Type A - 4A)', '0.005');
+  addEDC('BCIC (Type B - 4B)', '0.0025');
+});
+
+// ─────────────────────────────────────────────
+// CONFIG HELPERS
+// ─────────────────────────────────────────────
+function getCR(){ const v=document.getElementById('crSel').value; return v==='custom'?(parseFloat(document.getElementById('crVal').value)||2)/100:parseFloat(v); }
+function onRateChg(){ document.getElementById('crGrp').style.display=document.getElementById('crSel').value==='custom'?'flex':'none'; }
+
+// ─────────────────────────────────────────────
+// EDC
+// ─────────────────────────────────────────────
+function addEDC(name='',rate='0.005'){
+  edcId++;
+  const id=edcId, d=document.createElement('div');
+  d.className='er'; d.id=`er-${id}`;
+  d.innerHTML=`<span class="el">Name:</span>
+    <input type="text" id="en-${id}" value="${name}" placeholder="EDC Name">
+    <span class="el">Allotment:</span>
+    <select id="es-${id}" onchange="onEC(${id},this)">
+      <option value="0.005"  ${rate==='0.005'?'selected':''}>½ cent (0.50%)</option>
+      <option value="0.0025" ${rate==='0.0025'?'selected':''}>¼ cent (0.25%)</option>
+      <option value="custom">Custom %</option>
+    </select>
+    <input type="number" id="ec-${id}" style="display:none;max-width:80px" placeholder="%" min="0.01" max="2" step="0.01">
+    <button class="brm" onclick="rmEDC(${id})">✕</button>`;
+  document.getElementById('edcList').appendChild(d);
+}
+function onEC(id,sel){ document.getElementById(`ec-${id}`).style.display=sel.value==='custom'?'block':'none'; }
+function rmEDC(id){ document.getElementById(`er-${id}`)?.remove(); }
+function getEDCs(){
+  return [...document.querySelectorAll('.er')].flatMap(r=>{
+    const id=r.id.replace('er-','');
+    const name=document.getElementById(`en-${id}`)?.value?.trim();
+    const sel=document.getElementById(`es-${id}`);
+    const rate=sel.value==='custom'?(parseFloat(document.getElementById(`ec-${id}`).value)||0)/100:parseFloat(sel.value);
+    return name&&rate>0?[{name,rate}]:[];
+  });
+}
+
+// ─────────────────────────────────────────────
+// PERIOD
+// ─────────────────────────────────────────────
+function setPeriod(y,btn){
+  period=y;
+  document.querySelectorAll('.pb').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+// ─────────────────────────────────────────────
+// SCHEMA DETECTION
+// ─────────────────────────────────────────────
+function sniffCols(row){
+  const keys=Object.keys(row);
+  console.log('API columns:',keys);
+  const exact  = n=>keys.find(k=>k.toLowerCase()===n.toLowerCase());
+  const has    = (...t)=>keys.find(k=>t.every(x=>k.toLowerCase().includes(x.toLowerCase())));
+  return {
+    city:    exact('city')||has('city')||'city',
+    pay:     has('net','payment','this')||has('net','payment')||'net_payment_this_period',
+    prior:   has('comparable')||has('prior','year')||null,
+    ytd:     has('payments','date')||exact('ytd')||null,
+    pctChg:  has('period','percent')||has('percent','change')||null,
+    year:    keys.find(k=>/^(report_)?year$/i.test(k))||null,
+    month:   keys.find(k=>/^(report_)?month$/i.test(k))||null,
+    period:  has('period','name')||has('period','type')||null,
+  };
+}
+
+// ─────────────────────────────────────────────
+// FETCH
+// ─────────────────────────────────────────────
+async function fetchCity(city){
+  const BASE='https://data.texas.gov/resource/vfba-b57j.json';
+  const CY=new Date().getFullYear();
+  const fromYear=CY-period-1; // one extra year for YoY comparison
+
+  // Try case-insensitive upper() first, fall back to exact title-case
+  const cityUpper=city.toUpperCase();
+  const yearFilter = cols?.year ? ` AND ${cols.year} >= ${fromYear}` : '';
+
+  let rows=null;
+
+  // Attempt 1: upper() + year filter
+  try{
+    const p=new URLSearchParams({'$where':`upper(${cols.city})='${cityUpper}'${yearFilter}`,'$limit':'1000','$order':`${cols.year||'report_year'} ASC, ${cols.month||'report_month'} ASC`});
+    const r=await fetch(`${BASE}?${p}`);
+    if(r.ok){ const d=await r.json(); if(Array.isArray(d)&&!d.error){ rows=d; console.log(`upper() returned ${d.length} rows`); } }
+  }catch(e){console.warn('upper() failed:',e);}
+
+  // Attempt 2: title-case exact match
+  if(!rows?.length){
+    const tc=city.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+    try{
+      const p=new URLSearchParams({'$where':`${cols.city}='${tc}'${yearFilter}`,'$limit':'1000','$order':`${cols.year||'report_year'} ASC, ${cols.month||'report_month'} ASC`});
+      const r=await fetch(`${BASE}?${p}`);
+      if(r.ok){ const d=await r.json(); if(Array.isArray(d)&&!d.error){ rows=d; console.log(`title-case returned ${d.length} rows`); } }
+    }catch(e){console.warn('title-case failed:',e);}
+  }
+
+  return rows||[];
+}
+
+// ─────────────────────────────────────────────
+// MAIN RUN
+// ─────────────────────────────────────────────
+async function run(){
+  const city=document.getElementById('cityIn').value.trim();
+  if(!city){alert('Enter a city name.');return;}
+
+  const btn=document.getElementById('genBtn');
+  btn.disabled=true;
+  document.getElementById('lcCity').textContent=city;
+  show('loadCard',true); show('results',false); show('errBox',false);
+
+  try{
+    // ── schema probe ──────────────────────────
+    const probe=await fetch('https://data.texas.gov/resource/vfba-b57j.json?$limit=1');
+    if(!probe.ok) throw new Error(`Cannot reach data portal (HTTP ${probe.status}).`);
+    const sample=await probe.json();
+    if(!sample?.length) throw new Error('Data portal returned no rows during schema probe.');
+    cols=sniffCols(sample[0]);
+    console.log('Detected cols:',cols,'\nSample row:',sample[0]);
+
+    // ── fetch city rows ───────────────────────
+    const raw=await fetchCity(city);
+    if(!raw.length) throw new Error(`No records found for "${city}". Check spelling — city names are stored in Title Case (e.g. Brownsville, Houston, San Antonio).`);
+
+    // ── parse all rows ────────────────────────
+    allRows=raw.map(r=>({
+      year:  parseInt(r[cols.year])||0,
+      month: parseInt(r[cols.month])||0,
+      pay:   parseFloat(r[cols.pay])||0,
+      prior: cols.prior  ? parseFloat(r[cols.prior])||0 : null,
+      ytd:   cols.ytd    ? parseFloat(r[cols.ytd])||0   : null,
+      pct:   cols.pctChg ? parseFloat(r[cols.pctChg])   : null,
+    })).filter(r=>r.year>0&&r.month>0)
+       .sort((a,b)=>a.year!==b.year?a.year-b.year:a.month-b.month);
+
+    console.log(`Parsed ${allRows.length} monthly records. Years: ${[...new Set(allRows.map(r=>r.year))].join(', ')}`);
+
+    if(!allRows.length) throw new Error(`Rows returned but none had valid year/month data. Column names detected: year="${cols.year}", month="${cols.month}". Open console for details.`);
+
+    show('loadCard',false);
+    renderAll(city);
+    show('results',true);
+    document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+
+  }catch(err){
+    show('loadCard',false);
+    document.getElementById('errBox').innerHTML=`<strong>⚠️ Error:</strong> ${err.message}<br><small style="color:#c05621">Open browser console (F12) for API details.</small>`;
+    show('errBox',true);
+  }finally{ btn.disabled=false; }
+}
+
+// ─────────────────────────────────────────────
+// RENDER ALL
+// ─────────────────────────────────────────────
+function renderAll(city){
+  destroyAll();
+  const cr=getCR(), edcs=getEDCs();
+  const CY=new Date().getFullYear();
+
+  // Derive datasets
+  const latest   = allRows[allRows.length-1];
+  const curYrRows= allRows.filter(r=>r.year===CY);
+  const histRows = allRows.filter(r=>r.year<CY); // prior years only for history
+
+  // Annual totals (all years in the dataset)
+  const byYear={};
+  allRows.forEach(r=>{ byYear[r.year]=(byYear[r.year]||0)+r.pay; });
+  const annYears=Object.keys(byYear).map(Number).sort();
+
+  // City label
+  const cityLbl=city.split(' ').map(w=>w.charAt(0).toUpperCase()+w.slice(1).toLowerCase()).join(' ');
+
+  // ── Report header ──────────────────────────
+  document.getElementById('rTitle').textContent=`Sales Tax Allocation — City of ${cityLbl}`;
+  document.getElementById('rSub').textContent=
+    `${period}-Year Report · ${annYears[0]}–${annYears[annYears.length-1]} · ${allRows.length} monthly records · City local rate: ${(cr*100).toFixed(2)}%`;
+
+  // ── Latest period stats ────────────────────
+  const latestYrTotal = byYear[latest.year]||0;
+  const prevYrTotal   = byYear[latest.year-1]||null;
+  const yoy           = prevYrTotal ? ((latestYrTotal-prevYrTotal)/prevYrTotal*100) : null;
+  const projAnnual    = latest.ytd&&latest.month>0 ? (latest.ytd/latest.month*12) : latest.pay*12;
+
+  document.getElementById('latestStats').innerHTML=`
+    <div class="sc"><div class="sl">Latest Month</div>
+      <div class="sv">${fmt0(latest.pay)}</div>
+      <div class="ss">${MONTHS[latest.month-1]} ${latest.year}</div></div>
+    <div class="sc g"><div class="sl">Year-to-Date (${latest.year})</div>
+      <div class="sv">${latest.ytd?fmt0(latest.ytd):'—'}</div>
+      <div class="ss">Through month ${latest.month}</div></div>
+    <div class="sc o"><div class="sl">Prior Year (${latest.year-1}) Total</div>
+      <div class="sv">${prevYrTotal?fmt0(prevYrTotal):'—'}</div>
+      <div class="ss">Full calendar year</div></div>
+    <div class="sc p"><div class="sl">YoY Annual Change</div>
+      <div class="sv ${yoy===null?'':yoy>=0?'up':'dn'}">${yoy===null?'—':pct(yoy)}</div>
+      <div class="ss">${latest.year} YTD pace vs ${latest.year-1}</div></div>
+    <div class="sc y"><div class="sl">Projected Annual</div>
+      <div class="sv">${fmt0(projAnnual)}</div>
+      <div class="ss">Based on YTD pace</div></div>`;
+
+  // ── Current year monthly ───────────────────
+  document.getElementById('curYrTitle').textContent=`${CY} Calendar Year — Monthly Breakdown`;
+  renderCurYrCharts(curYrRows, edcs, cr);
+  renderCurYrTable(curYrRows, edcs, cr);
+
+  // ── EDC section ────────────────────────────
+  if(edcs.length>0){
+    show('edcCard',true);
+    renderEDCCards(edcs, cr, latest.pay, projAnnual, latest.ytd, latest.month);
+    renderDonut(edcs, cr, latest.pay);
+    renderProjBar(edcs, cr, projAnnual);
+  }else{ show('edcCard',false); }
+
+  // ── Historical annual charts ───────────────
+  document.getElementById('edcAnnTitle').textContent= edcs.length?'EDC Annual Allocations':'No EDCs configured';
+  renderAnnualBar(annYears, byYear);
+  renderEDCAnnualBar(annYears, byYear, edcs, cr);
+
+  // ── Projections ────────────────────────────
+  if(annYears.length>=2){
+    const first=byYear[annYears[0]], last=byYear[annYears[annYears.length-1]];
+    const cagr=Math.pow(last/first,1/(annYears.length-1))-1;
+    renderProjections(last, cagr*100, edcs, cr);
+    show('projCard',true);
+  }
+
+  // ── Tables ────────────────────────────────
+  renderAnnualTable(annYears, byYear, edcs, cr);
+  renderMonthlyTable(allRows, edcs, cr);
+}
+
+// ─────────────────────────────────────────────
+// CURRENT YEAR CHARTS
+// ─────────────────────────────────────────────
+function renderCurYrCharts(rows, edcs, cr){
+  const labels=rows.map(r=>MONTHS[r.month-1]);
+
+  // City bar
+  const ctx1=document.getElementById('curYrBar').getContext('2d');
+  charts.curYrBar=new Chart(ctx1,{type:'bar',
+    data:{labels,datasets:[{label:'City Allocation',data:rows.map(r=>r.pay),backgroundColor:'rgba(0,87,184,.8)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt2(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fmt0(v)},grid:{color:'#eef2f7'}},x:{grid:{display:false}}}}});
+
+  // EDC bars
+  const ctx2=document.getElementById('curYrEDCBar').getContext('2d');
+  if(edcs.length>0){
+    const ds=edcs.map((e,i)=>({label:e.name,data:rows.map(r=>+(r.pay*(e.rate/cr)).toFixed(2)),backgroundColor:COLORS[i%COLORS.length],borderRadius:4}));
+    charts.curYrEDC=new Chart(ctx2,{type:'bar',
+      data:{labels,datasets:ds},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt2(c.raw)}`}}},
+        scales:{y:{ticks:{callback:v=>fmt0(v)},grid:{color:'#eef2f7'}},x:{grid:{display:false}}}}});
+  }else{
+    charts.curYrEDC=new Chart(ctx2,{type:'bar',data:{labels,datasets:[]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{y:{ticks:{callback:v=>fmt0(v)}},x:{grid:{display:false}}}}});
+  }
+}
+
+// ─────────────────────────────────────────────
+// CURRENT YEAR TABLE
+// ─────────────────────────────────────────────
+function renderCurYrTable(rows, edcs, cr){
+  if(!rows.length){document.getElementById('curYrTable').innerHTML='<tr><td style="padding:12px;color:#718096">No data yet for current calendar year.</td></tr>';return;}
+  const edcHdr=edcs.map(e=>`<th class="tr">${e.name}</th>`).join('');
+  let html=`<thead><tr><th>Month</th><th class="tr">City Allocation</th>${edcHdr}<th class="tr">YoY Change</th></tr></thead><tbody>`;
+  const totalPay=rows.reduce((s,r)=>s+r.pay,0);
+  rows.forEach(r=>{
+    const ys=r.pct!==null?`<span class="${r.pct>=0?'up':'dn'}">${pct(r.pct)}</span>`:'—';
+    const edcTD=edcs.map(e=>`<td class="tr">${fmt2(r.pay*(e.rate/cr))}</td>`).join('');
+    html+=`<tr><td>${MONTHS[r.month-1]}</td><td class="tr">${fmt2(r.pay)}</td>${edcTD}<td class="tr">${ys}</td></tr>`;
+  });
+  // Totals row
+  const edcTot=edcs.map(e=>`<td class="tr"><strong>${fmt2(totalPay*(e.rate/cr))}</strong></td>`).join('');
+  html+=`<tr style="background:#f0f4f8"><td><strong>YTD Total</strong></td><td class="tr"><strong>${fmt2(totalPay)}</strong></td>${edcTot}<td></td></tr>`;
+  html+='</tbody>';
+  document.getElementById('curYrTable').innerHTML=html;
+}
+
+// ─────────────────────────────────────────────
+// EDC CARDS
+// ─────────────────────────────────────────────
+function renderEDCCards(edcs, cr, latestPay, projAnnual, ytd, moNum){
+  document.getElementById('edcCards').innerHTML=edcs.map(e=>{
+    const m=e.rate/cr;
+    const rl=e.rate===0.005?'½ cent':e.rate===0.0025?'¼ cent':`${(e.rate*100).toFixed(2)}%`;
+    return `<div class="ec">
+      <h4>${e.name}</h4>
+      <div class="eb2">${rl} · ${(m*100).toFixed(1)}% of city allocation</div>
+      <div class="em"><div class="eml">Latest Month</div><div class="emv">${fmt0(latestPay*m)}</div></div>
+      ${ytd?`<div class="em"><div class="eml">YTD (${moNum} months)</div><div class="emv">${fmt0(ytd*m)}</div></div>`:''}
+      <div class="em"><div class="eml">Projected Annual</div><div class="emv" style="color:#002060">${fmt0(projAnnual*m)}</div></div>
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+// DONUT
+// ─────────────────────────────────────────────
+function renderDonut(edcs, cr, cur){
+  const ctx=document.getElementById('donutChart').getContext('2d');
+  const eSum=edcs.reduce((s,e)=>s+e.rate/cr,0);
+  const ret=Math.max(0,1-eSum);
+  const labels=[...edcs.map(e=>e.name),'City (Other)'];
+  const data=[...edcs.map(e=>+(cur*(e.rate/cr)).toFixed(0)),+(cur*ret).toFixed(0)];
+  const clrs=[...COLORS.slice(0,edcs.length),'#94a3b8'];
+  charts.donut=new Chart(ctx,{type:'doughnut',
+    data:{labels,datasets:[{data,backgroundColor:clrs,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:10},boxWidth:12}},
+        tooltip:{callbacks:{label:c=>`${c.label}: ${fmt0(c.raw)} (${(c.raw/(cur||1)*100).toFixed(1)}%)`}}}}});
+}
+
+// ─────────────────────────────────────────────
+// PROJ BAR (cumulative at 1/3/5/10 yr)
+// ─────────────────────────────────────────────
+function renderProjBar(edcs, cr, projAnnual){
+  const ctx=document.getElementById('projBar').getContext('2d');
+  const hs=[1,3,5,10];
+  const ds=edcs.map((e,i)=>({label:e.name,data:hs.map(h=>+(projAnnual*(e.rate/cr)*h).toFixed(0)),backgroundColor:COLORS[i%COLORS.length],borderRadius:4}));
+  charts.projBar=new Chart(ctx,{type:'bar',
+    data:{labels:['1 Year','3 Years','5 Years','10 Years'],datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt0(c.raw)}`}}},
+      scales:{y:{ticks:{callback:v=>fmt0(v)},grid:{color:'#eef2f7'}},x:{grid:{display:false}}}}});
+}
+
+// ─────────────────────────────────────────────
+// ANNUAL BAR
+// ─────────────────────────────────────────────
+function renderAnnualBar(years, byYear){
+  const ctx=document.getElementById('annBar').getContext('2d');
+  charts.annBar=new Chart(ctx,{type:'bar',
+    data:{labels:years.map(String),datasets:[{label:'Annual Total',data:years.map(y=>byYear[y]),backgroundColor:'rgba(0,87,184,.8)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>fmt2(c.raw)}}},
+      scales:{y:{ticks:{callback:v=>fmt0(v)},grid:{color:'#eef2f7'}},x:{grid:{display:false}}}}});
+}
+
+function renderEDCAnnualBar(years, byYear, edcs, cr){
+  const ctx=document.getElementById('edcAnnBar').getContext('2d');
+  if(!edcs.length){
+    charts.edcAnn=new Chart(ctx,{type:'bar',data:{labels:years.map(String),datasets:[]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>fmt0(v)}},x:{grid:{display:false}}}}});
+    return;
+  }
+  const ds=edcs.map((e,i)=>({label:e.name,data:years.map(y=>+(byYear[y]*(e.rate/cr)).toFixed(0)),backgroundColor:COLORS[i%COLORS.length],borderRadius:4}));
+  charts.edcAnn=new Chart(ctx,{type:'bar',
+    data:{labels:years.map(String),datasets:ds},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{position:'bottom',labels:{font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${fmt2(c.raw)}`}}},
+      scales:{y:{ticks:{callback:v=>fmt0(v)},grid:{color:'#eef2f7'}},x:{grid:{display:false}}}}});
+}
+
+// ─────────────────────────────────────────────
+// PROJECTIONS
+// ─────────────────────────────────────────────
+function renderProjections(lastAnn, cagrPct, edcs, cr){
+  const cagr=cagrPct/100, hs=[1,3,5,10];
+  let html=`<div class="sc o"><div class="sl">CAGR</div><div class="sv">${cagrPct.toFixed(1)}%</div><div class="ss">Compound annual growth</div></div>`;
+  hs.forEach(h=>{
+    html+=`<div class="sc g"><div class="sl">${h}-Year City Total</div><div class="sv">${fmt0(lastAnn*Math.pow(1+cagr,h))}</div><div class="ss">Projected annual</div></div>`;
+  });
+  edcs.forEach((e,i)=>{
+    hs.forEach(h=>{
+      html+=`<div class="sc" style="border-top-color:${COLORS[i%COLORS.length]}"><div class="sl">${h}-Yr ${e.name}</div><div class="sv">${fmt0(lastAnn*Math.pow(1+cagr,h)*(e.rate/cr))}</div><div class="ss">Projected annual</div></div>`;
+    });
+  });
+  document.getElementById('projStats').innerHTML=html;
+}
+
+// ─────────────────────────────────────────────
+// TABLES
+// ─────────────────────────────────────────────
+function renderAnnualTable(years, byYear, edcs, cr){
+  const eTH=edcs.map(e=>`<th class="tr">${e.name}</th>`).join('');
+  let html=`<thead><tr><th>Year</th><th class="tr">City Annual Total</th>${eTH}<th class="tr">YoY Change</th><th class="tr">Months of Data</th></tr></thead><tbody>`;
+  const rowsByYear={};
+  allRows.forEach(r=>{ (rowsByYear[r.year]=rowsByYear[r.year]||[]).push(r); });
+  years.slice().reverse().forEach((y,i,arr)=>{
+    const prev=arr[i+1], yoy=prev?((byYear[y]-byYear[prev])/byYear[prev]*100):null;
+    const yStr=yoy!==null?`<span class="${yoy>=0?'up':'dn'}">${pct(yoy)}</span>`:'—';
+    const eTD=edcs.map(e=>`<td class="tr">${fmt0(byYear[y]*(e.rate/cr))}</td>`).join('');
+    html+=`<tr><td><strong>${y}</strong></td><td class="tr"><strong>${fmt0(byYear[y])}</strong></td>${eTD}<td class="tr">${yStr}</td><td class="tr">${(rowsByYear[y]||[]).length}</td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('annTable').innerHTML=html;
+}
+
+function renderMonthlyTable(rows, edcs, cr){
+  const eTH=edcs.map(e=>`<th class="tr">${e.name}</th>`).join('');
+  let html=`<thead><tr><th>Year</th><th>Month</th><th class="tr">City Allocation</th>${eTH}<th class="tr">YoY</th></tr></thead><tbody>`;
+  rows.slice().reverse().forEach(r=>{
+    const ys=r.pct!==null?`<span class="${r.pct>=0?'up':'dn'}">${pct(r.pct)}</span>`:'—';
+    const eTD=edcs.map(e=>`<td class="tr">${fmt2(r.pay*(e.rate/cr))}</td>`).join('');
+    html+=`<tr><td>${r.year}</td><td>${MONTHS[r.month-1]}</td><td class="tr">${fmt2(r.pay)}</td>${eTD}<td class="tr">${ys}</td></tr>`;
+  });
+  html+='</tbody>';
+  document.getElementById('moTable').innerHTML=html;
+}
+
+// ─────────────────────────────────────────────
+// TABS / UTILS
+// ─────────────────────────────────────────────
+function sTab(t,btn){
+  document.querySelectorAll('.tb').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tc').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(`tc-${t}`).classList.add('active');
+}
+function show(id,v){ document.getElementById(id).style.display=v?'block':'none'; }
+function destroyAll(){ Object.values(charts).forEach(c=>c.destroy()); charts={}; }
+</script>
+</body>
+</html>
